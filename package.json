@@ -23,11 +23,11 @@
     "parallel-agents",
     "coordination"
   ],
-  "author": "",
+  "author": "ctb111",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/ctb111/claude-agent-chatroom.git"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -149,7 +149,10 @@ async function disconnect() {
     // Close with normal close code (1000) and wait for it
     return new Promise((resolve) => {
       socket.once('close', () => {
-        resolve({ success: true, message: 'Disconnected' });
+        // Small delay to ensure server receives the close frame
+        setTimeout(() => {
+          resolve({ success: true, message: 'Disconnected' });
+        }, 100);
       });
 
       // Timeout in case close event doesn't fire

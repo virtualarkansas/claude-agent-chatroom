@@ -40,7 +40,7 @@ function createServer(port = PORT) {
         if (msg.type === 'chat') {
           broadcast(wss, clients, {
             type: 'chat',
-            from: clientInfo.name,
+            from: msg.from || clientInfo.name,  // Use sender's name if provided
             agentType: clientInfo.type,
             text: msg.text,
             timestamp: Date.now()
@@ -51,7 +51,7 @@ function createServer(port = PORT) {
         if (msg.type === 'discovery') {
           broadcast(wss, clients, {
             type: 'discovery',
-            from: clientInfo.name,
+            from: msg.from || clientInfo.name,  // Use sender's name if provided
             agentType: clientInfo.type,
             category: msg.category,
             text: msg.text,

@@ -28,10 +28,20 @@ const pendingQuestions = new Map();
  * Connect to chatroom
  */
 async function connect(name, type) {
-  if (connected) return { success: true, message: 'Already connected' };
-
+  // Always update the current agent's identity
+  const previousName = agentName;
   agentName = name;
   agentType = type || 'agent';
+
+  if (connected) {
+    // Re-register with new name
+    ws.send(JSON.stringify({
+      type: 'register',
+      name: agentName,
+      agentType: agentType
+    }));
+    return { success: true, message: `Joined as ${agentName}` };
+  }
 
   return new Promise((resolve) => {
     ws = new WebSocket(SERVER_URL);
@@ -99,12 +109,15 @@ function disconnect() {
 /**
  * Broadcast a message
  */
-function broadcast(message, category) {
+function broadcast(message, category, senderName) {
   if (!connected) return { success: false, error: 'Not connected' };
 
+  // Use provided sender name, or fall back to agentName
+  const from = senderName || agentName;
+
   const msg = category
-    ? { type: 'discovery', category, text: message }
-    : { type: 'chat', text: message };
+    ? { type: 'discovery', category, text: message, from }
+    : { type: 'chat', text: message, from };
 
   ws.send(JSON.stringify(msg));
   return { success: true, message: 'Message sent' };
@@ -188,6 +201,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         type: 'object',
         properties: {
           message: { type: 'string', description: 'Message to send' },
+          name: { type: 'string', description: 'Your agent name (from chatroom_join)' },
           category: {
             type: 'string',
             enum: ['found', 'claiming', 'completed', 'blocked'],
@@ -235,7 +249,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: 'text', text: JSON.stringify(disconnect()) }] };
 
     case 'chatroom_broadcast':
-      return { content: [{ type: 'text', text: JSON.stringify(broadcast(args.message, args.category)) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(broadcast(args.message, args.category, args.name)) }] };
 
     case 'chatroom_ask':
       return { content: [{ type: 'text', text: JSON.stringify(await ask(args.question, args.timeout)) }] };

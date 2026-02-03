@@ -1,22 +1,22 @@
 # Agent Chatroom
 
-A Claude Code plugin that enables real-time communication between parallel agents and users.
+A Claude Code plugin that enables real-time **coordination** between parallel agents and users.
 
-When Claude Code spawns multiple agents to work on a task, they automatically coordinate through a shared chatroom. You can observe agent activity and send guidance in real-time through a terminal UI.
+When Claude Code spawns multiple agents to work on a task, they can coordinate through a shared chatroom. Think of it like a team Slack channel - quick questions, help requests, and status updates. The chatroom is **not** for dumping work output or results.
 
 ## Why Use This?
 
 When working with multiple Claude Code agents:
 - **Agents work in isolation** - They don't know what other agents are doing
-- **Duplicate work** - Multiple agents might analyze the same files
-- **No user visibility** - You can't see what agents are doing until they finish
+- **No inter-agent communication** - Backend can't ask frontend about API formats
 - **No mid-task guidance** - You can't redirect agents while they work
+- **Blocking questions** - Agents get stuck waiting for info they can't get
 
 Agent Chatroom solves all of this:
-- **Real-time coordination** - Agents share findings and claim tasks
-- **User visibility** - Watch all agent activity in a terminal UI
-- **Live guidance** - Send messages to agents while they work
-- **Automatic** - No manual setup needed per session
+- **Real-time coordination** - Agents ask each other questions and share info
+- **User guidance** - Send decisions and clarifications to agents while they work
+- **Help requests** - Blocked agents can ask for help from others
+- **Brief status updates** - Know what agents are working on
 
 ## Installation
 
@@ -139,10 +139,10 @@ claude /plugins list
 
 1. **First agent spawns** → Server starts, Terminal UI opens
 2. **Each agent** → Receives chatroom instructions in their prompt
-3. **Agents join** → Register in chatroom with their name/type
-4. **Agents broadcast** → Share findings, claim files, report progress
-5. **You observe** → See all activity in the Terminal UI
-6. **You guide** → Send messages that agents see via `chatroom_check`
+3. **Agents join** → Register in chatroom with their name
+4. **Agents coordinate** → Ask questions, request help, share brief status
+5. **You observe** → See coordination activity in the Terminal UI
+6. **You guide** → Answer questions and give directions via the terminal
 
 ## Usage
 
@@ -151,14 +151,15 @@ claude /plugins list
 Just use Claude Code normally. When you spawn agents, the chatroom activates automatically:
 
 ```
-You: Analyze the authentication system using multiple agents
+You: Build a user dashboard with backend API and frontend components
 
-Claude: I'll spawn several agents to analyze different aspects...
+Claude: I'll spawn backend and frontend agents...
         [Task tool called - hook fires - chatroom starts]
 
 → Terminal UI pops up
-→ Agents join and start broadcasting
-→ You watch and optionally guide them
+→ Agents join and coordinate via the chatroom
+→ You answer questions and provide guidance
+→ Agents return their work output to Claude (not the chatroom)
 ```
 
 ### Terminal UI
@@ -168,13 +169,14 @@ When the first agent spawns, a terminal window opens with the chatroom UI:
 ```
 ┌─ Agent Chatroom ──────────────────────────────────────────────┐
 │                                                                │
-│ [system] auth-analyzer joined                                  │
-│ [system] db-explorer joined                                    │
-│ [auth-analyzer] 🔍 Claiming: src/auth/                        │
-│ [db-explorer] 🔍 Claiming: src/database/                      │
-│ [auth-analyzer] ✓ Found: JWT tokens stored insecurely         │
-│ [db-explorer] ✓ Found: Missing connection pooling             │
-│ [auth-analyzer] Completed analysis of auth module             │
+│ [system] backend joined                                        │
+│ [system] frontend joined                                       │
+│ [backend] Starting API implementation                          │
+│ [frontend] Hey backend, what response format for /users?       │
+│ [backend] @frontend - JSON with {id, name, email}              │
+│ [backend] User, should I add rate limiting?                    │
+│ [user] Yes, add rate limiting. 100 req/min per user            │
+│ [frontend] Done with my task, standing by                      │
 │                                                                │
 ├────────────────────────────────────────────────────────────────┤
 │ > Type a message to send to agents...                         │
@@ -186,8 +188,9 @@ When the first agent spawns, a terminal window opens with the chatroom UI:
 Type in the Terminal UI to send messages. Agents see these when they call `chatroom_check`:
 
 ```
-> Focus on security vulnerabilities, ignore styling issues
-> [A:abc123] Check the session.ts file specifically
+> Use REST, not GraphQL
+> The auth tokens are in src/lib/auth.ts
+> [A:abc123] Yes, add the rate limiting
 ```
 
 The `[A:question_id]` format answers a specific agent question (see below).
@@ -197,10 +200,27 @@ The `[A:question_id]` format answers a specific agent question (see below).
 Agents can ask questions and wait for your answer:
 
 ```
-[auth-analyzer] [Q:abc123] Should I also check the OAuth integration?
+[backend] [Q:abc123] Should I add rate limiting to the API?
 
-> [A:abc123] Yes, check OAuth and also look at the refresh token logic
+> [A:abc123] Yes, 100 requests per minute per user
 ```
+
+## What the Chatroom Is For
+
+**Good uses (coordination):**
+- "Hey frontend, what API format do you expect?"
+- "User, should I use REST or GraphQL?"
+- "I'm blocked - can't find the auth middleware"
+- "Starting work on the database module"
+- "Done with my task, standing by"
+
+**Bad uses (don't do this):**
+- Posting full research findings or results
+- Dumping code you're implementing
+- Verbose progress logs
+- Detailed analysis or explanations
+
+Agents return their actual work output to the orchestrator. The chatroom is just for coordination.
 
 ## Agent Tools
 
@@ -220,10 +240,10 @@ Agents use categories to organize their messages:
 
 | Category | Meaning | Example |
 |----------|---------|---------|
-| `found` | Discovery or finding | "Found SQL injection in query.ts" |
-| `claiming` | Claiming a file/task | "Analyzing src/auth/" |
-| `completed` | Finished a task | "Completed auth module analysis" |
-| `blocked` | Needs help | "Can't access database schema" |
+| `found` | Found info another agent needs | "Found the API spec at docs/api.md" |
+| `claiming` | Starting work on something | "Starting work on auth module" |
+| `completed` | Brief completion status | "Done with database setup, standing by" |
+| `blocked` | Needs help from others | "Blocked - can't find the config file" |
 
 ## Configuration
 

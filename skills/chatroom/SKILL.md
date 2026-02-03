@@ -5,7 +5,7 @@ description: Start the agent chatroom for real-time coordination between paralle
 
 # Agent Chatroom
 
-This skill starts a real-time chatroom where parallel agents can communicate and you can monitor their progress.
+This skill starts a real-time chatroom for **coordination between parallel agents and the user**. The chatroom is for quick communication, asking questions, and getting help - not for posting work output or results.
 
 ## Starting the Chatroom
 
@@ -30,19 +30,34 @@ After starting the chatroom, whenever you spawn agents (using the Task tool), yo
 ```
 ## Chatroom Instructions
 
-You have access to a real-time chatroom. Use it to coordinate with other agents and receive guidance from the user.
+You have access to a real-time chatroom for **coordination only** - not for posting your work output.
 
 **At start:**
-- Call `chatroom_join` with your agent name (e.g., "alpha", "beta", or a descriptive name)
+- Call `chatroom_join` with your agent name (e.g., "backend", "frontend", or a descriptive name)
+
+**What the chatroom IS for:**
+- Asking other agents for information you need (e.g., "frontend-agent, what API format do you expect?")
+- Asking the user for clarification or decisions (e.g., "Should I use REST or GraphQL?")
+- Requesting help when blocked (e.g., "I'm stuck on auth - anyone know where tokens are stored?")
+- Brief status updates (e.g., "Starting auth module" / "Done with database setup")
+- Coordinating with other agents on shared concerns
+
+**What the chatroom is NOT for:**
+- Posting your research findings or results (return those to the orchestrator)
+- Dumping code you're writing
+- Verbose progress logs
+- Detailed explanations of your work
+
+Think of it like a team Slack channel - quick coordination messages, not a build log.
 
 **During work:**
-- Call `chatroom_broadcast` with your name and message to share findings
-  Example: `chatroom_broadcast(message: "Found the bug in auth.js", name: "your-name")`
+- Call `chatroom_broadcast` with brief coordination messages
+  Example: `chatroom_broadcast(message: "Need frontend API spec before I continue", name: "backend")`
 - Call `chatroom_check` periodically to see messages from other agents or the user
 
 **IMPORTANT - Stay alive:**
 After completing your main task:
-1. Broadcast your completion status
+1. Broadcast brief completion status (e.g., "Done with my task, standing by")
 2. Enter a monitoring loop: call `chatroom_check` every 3-5 seconds
 3. Watch for new instructions from the user
 4. Only exit when:
@@ -60,11 +75,30 @@ The chatroom UI terminal allows the user to:
 
 ## Example Workflow
 
-User: `/chatroom` then "spawn 3 agents to review code"
+User: `/chatroom` then "spawn backend and frontend agents to build a feature"
 
 You should:
 1. Start the chatroom (run the spawn-terminal command)
-2. Spawn 3 agents with chatroom instructions appended to their prompts
-3. Agents join, work, report findings, and stay alive waiting for more instructions
-4. User can interact via the chatroom terminal
-5. When user closes the terminal, agents exit gracefully
+2. Spawn agents with chatroom instructions appended to their prompts
+3. Agents join and work independently, using the chatroom to:
+   - Ask each other questions ("What endpoint should I call?")
+   - Request user decisions ("REST or GraphQL?")
+   - Get help when blocked ("Can't find the auth middleware")
+   - Post brief status ("Done with API, standing by")
+4. User can direct agents via the chatroom terminal
+5. Agents return their actual work output to the orchestrator (not the chatroom)
+6. When user closes the terminal, agents exit gracefully
+
+## Example Chatroom Messages
+
+**Good:**
+- "frontend: Hey backend, what's the response format for /users?"
+- "backend: @frontend - JSON with {id, name, email}"
+- "backend: User, should I add rate limiting?"
+- "frontend: Blocked - need the API key location"
+- "backend: Done with auth module, standing by"
+
+**Bad (don't do this):**
+- "Here are my 5 research findings: 1. Dragon fruit exports increased..."
+- "Implementing the following code: function handleAuth() { ... }"
+- "Full analysis complete: The market trends show..."

@@ -6,7 +6,76 @@
 
 A Claude Code plugin that enables real-time **coordination** between parallel agents and users.
 
-When Claude Code spawns multiple agents to work on a task, they can coordinate through a shared chatroom. Think of it like a team Slack channel - quick questions, help requests, and status updates. The chatroom is **not** for dumping work output or results.
+When Claude Code spawns multiple agents to work on a task, they can coordinate through a shared chatroom. The chatroom facilitates inter-agent communication, user guidance, and status updates. It is designed for coordination messages only, not for posting work output or results.
+
+## How It Works
+
+```mermaid
+flowchart TB
+    subgraph User["User Request"]
+        Request["Analyze auth, database, and API in parallel"]
+    end
+
+    subgraph ClaudeCode["Claude Code Runtime"]
+        Task["Task Tool Invocation"]
+        Hook["PreToolUse Hook<br/><i>task-pretool.js</i>"]
+
+        subgraph AgentPool["Spawned Agents"]
+            A1["Agent 1<br/>auth module"]
+            A2["Agent 2<br/>database module"]
+            A3["Agent 3<br/>api module"]
+        end
+
+        MCP["Chatroom MCP Server<br/><i>chatroom-mcp.js</i>"]
+    end
+
+    subgraph Infrastructure["Infrastructure Layer"]
+        WS["WebSocket Server<br/><i>server.js - Port 3030</i>"]
+    end
+
+    subgraph Interface["User Interface"]
+        UI["Terminal UI<br/><i>ui.js - blessed-based TUI</i>"]
+        Messages["Message Stream<br/><i>Real-time agent broadcasts</i>"]
+    end
+
+    Request --> Task
+    Task --> Hook
+
+    Hook -->|"1. Check/start server<br/>2. Launch Terminal UI<br/>3. Inject chatroom instructions"| AgentPool
+
+    A1 & A2 & A3 --> MCP
+    MCP <-->|"WebSocket Connection"| WS
+    WS <--> UI
+    WS <--> Messages
+
+    style User fill:#f5f5f5,stroke:#333
+    style ClaudeCode fill:#fff8e1,stroke:#333
+    style Infrastructure fill:#e8eaf6,stroke:#333
+    style Interface fill:#e8f5e9,stroke:#333
+    style Hook fill:#fff3e0,stroke:#f57c00
+```
+
+### Component Overview
+
+| Component | File | Description |
+|-----------|------|-------------|
+| **PreToolUse Hook** | `hooks/scripts/task-pretool.js` | Intercepts Task tool calls. Checks if chatroom server is running, starts it if needed, launches the Terminal UI, and injects chatroom instructions into the agent's prompt. |
+| **Chatroom MCP Server** | `chatroom-mcp.js` | Model Context Protocol server that exposes `chatroom_join`, `chatroom_broadcast`, `chatroom_check`, `chatroom_ask`, and `chatroom_leave` tools to agents. |
+| **WebSocket Server** | `server.js` | Central message broker running on port 3030. Routes messages between all connected clients (agents and UI). Handles connection lifecycle and heartbeat monitoring. |
+| **Terminal UI** | `ui.js` | Blessed-based terminal user interface. Displays real-time message stream, accepts user input, and sends messages to agents. |
+| **Terminal Spawner** | `spawn-terminal.js` | Cross-platform utility to open a new terminal window. Supports macOS (Terminal, iTerm), Linux (gnome-terminal, konsole, xterm, etc.), and Windows. |
+
+### Execution Flow
+
+1. **User Request** - User asks Claude Code to perform a multi-agent task
+2. **Task Tool Called** - Claude Code invokes the Task tool to spawn agents
+3. **Hook Intercepts** - PreToolUse hook fires before each Task execution
+4. **Server Initialization** - Hook checks port 3030; starts server and UI if not running
+5. **Prompt Injection** - Hook appends chatroom instructions to agent prompts
+6. **Agent Registration** - Each agent calls `chatroom_join` upon starting
+7. **Real-time Coordination** - Agents broadcast messages and check for updates
+8. **User Interaction** - User observes and sends guidance via Terminal UI
+9. **Graceful Shutdown** - Agents detect server close and exit cleanly
 
 ![Agent Chatroom Screenshot](screenshot.png)
 
@@ -106,74 +175,6 @@ If you prefer manual setup instead of using the plugin system:
 ```
 
 Replace `/path/to/claude-agent-chatroom` with your actual installation path.
-
-## How It Works
-
-```mermaid
-flowchart TB
-    subgraph USER["👤 User"]
-        Request["'Analyze auth, database, and API in parallel'"]
-    end
-
-    subgraph CC["🤖 Claude Code"]
-        Task["Task Tool Called"]
-        Hook["⚡ PreToolUse Hook"]
-
-        subgraph Agents["Parallel Agents"]
-            A1["🔐 Agent 1<br/>auth"]
-            A2["🗄️ Agent 2<br/>database"]
-            A3["🔌 Agent 3<br/>api"]
-        end
-
-        MCP["📡 Chatroom MCP<br/><i>Provides chatroom_* tools</i>"]
-    end
-
-    subgraph Server["🖥️ Chatroom Server :3030"]
-        WS["WebSocket Hub<br/><i>Routes messages between all clients</i>"]
-    end
-
-    subgraph Outputs["Real-time Communication"]
-        UI["🖵 Terminal UI<br/><i>You watch & send messages</i>"]
-        Broadcast["📢 Agent Messages<br/><i>Coordination & status updates</i>"]
-    end
-
-    Request --> Task
-    Task --> Hook
-
-    Hook -->|"1. Starts server if needed<br/>2. Opens Terminal UI<br/>3. Injects chatroom instructions"| Agents
-
-    A1 & A2 & A3 --> MCP
-    MCP <-->|"WebSocket"| WS
-    WS <--> UI
-    WS <--> Broadcast
-
-    style USER fill:#e1f5fe
-    style CC fill:#fff3e0
-    style Server fill:#f3e5f5
-    style Outputs fill:#e8f5e9
-    style Hook fill:#ffecb3
-```
-
-### Flow Description
-
-| Step | Component | What Happens |
-|------|-----------|--------------|
-| 1️⃣ | **You** | Request a multi-agent task |
-| 2️⃣ | **Claude Code** | Calls Task tool to spawn agents |
-| 3️⃣ | **PreToolUse Hook** | Intercepts, starts server/UI, injects instructions |
-| 4️⃣ | **Agents** | Spawn with chatroom capabilities |
-| 5️⃣ | **Chatroom MCP** | Provides `chatroom_join`, `chatroom_broadcast`, `chatroom_check` |
-| 6️⃣ | **WebSocket Server** | Routes all messages in real-time |
-| 7️⃣ | **Terminal UI** | You observe and guide agents |
-
-### What Happens Automatically
-
-1. **First agent spawns** → Server starts, Terminal UI opens
-2. **Each agent** → Receives chatroom instructions in their prompt
-3. **Agents join** → Register in chatroom with their name
-4. **Agents coordinate** → Ask questions, request help, share brief status
-5. **You observe** → See coordination activity in the Terminal UI
-6. **You guide** → Answer questions and give directions via the terminal
 
 ## Usage
 

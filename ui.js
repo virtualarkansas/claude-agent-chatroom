@@ -96,7 +96,9 @@ function formatTime(ts) {
 // Create screen
 const screen = blessed.screen({
   smartCSR: true,
-  title: 'Agent Chatroom'
+  title: 'Agent Chatroom',
+  mouse: true,           // Enable mouse support
+  fullUnicode: true      // Better character support
 });
 
 // Header
@@ -105,7 +107,7 @@ const header = blessed.box({
   left: 0,
   width: '100%',
   height: 3,
-  content: ' {cyan-fg}{bold}Agent Chatroom{/bold}{/cyan-fg} | {red-fg}Connecting...{/red-fg} | Ctrl+C to exit',
+  content: ' {cyan-fg}{bold}Agent Chatroom{/bold}{/cyan-fg} | {red-fg}Connecting...{/red-fg} | Tab:focus | PgUp/Dn:scroll | Ctrl+C:exit',
   tags: true,
   border: { type: 'line' },
   style: { border: { fg: 'cyan' } }
@@ -121,11 +123,20 @@ const messageLog = blessed.log({
   border: { type: 'line' },
   scrollable: true,
   alwaysScroll: true,
+  mouse: true,           // Mouse scroll support
+  keys: true,            // Keyboard scroll support
+  vi: true,              // vi-style keys (j/k for scroll)
   scrollbar: {
-    ch: '|',
+    ch: '\u2588',        // Full block character for scrollbar
+    track: {
+      bg: 'gray'
+    },
     style: { fg: 'cyan' }
   },
-  style: { border: { fg: 'gray' } }
+  style: {
+    border: { fg: 'gray' },
+    scrollbar: { bg: 'cyan' }
+  }
 });
 
 // Input box
@@ -143,6 +154,19 @@ screen.append(header);
 screen.append(messageLog);
 screen.append(inputBox);
 
+// Visual focus indicator
+messageLog.on('focus', () => {
+  messageLog.style.border.fg = 'cyan';
+  inputBox.style.border.fg = 'gray';
+  screen.render();
+});
+
+inputBox.on('focus', () => {
+  inputBox.style.border.fg = 'blue';
+  messageLog.style.border.fg = 'gray';
+  screen.render();
+});
+
 // State
 let ws = null;
 let connected = false;
@@ -152,7 +176,7 @@ function updateStatus(isConnected) {
   const status = isConnected
     ? '{green-fg}Connected{/green-fg}'
     : '{red-fg}Disconnected{/red-fg}';
-  header.setContent(` {cyan-fg}{bold}Agent Chatroom{/bold}{/cyan-fg} | ${status} | Ctrl+C exit`);
+  header.setContent(` {cyan-fg}{bold}Agent Chatroom{/bold}{/cyan-fg} | ${status} | Tab:focus | PgUp/Dn:scroll | Ctrl+C:exit`);
   screen.render();
 }
 
@@ -224,6 +248,48 @@ screen.key(['escape'], () => inputBox.focus());
 screen.key(['C-c'], () => {
   if (ws) ws.close();
   process.exit(0);
+});
+
+// Tab to switch focus between input and message log
+screen.key(['tab'], () => {
+  if (inputBox.focused) {
+    messageLog.focus();
+  } else {
+    inputBox.focus();
+  }
+  screen.render();
+});
+
+// Scroll shortcuts (when message log is focused or globally)
+screen.key(['pageup'], () => {
+  messageLog.scroll(-messageLog.height + 2);
+  screen.render();
+});
+screen.key(['pagedown'], () => {
+  messageLog.scroll(messageLog.height - 2);
+  screen.render();
+});
+screen.key(['home'], () => {
+  messageLog.setScrollPerc(0);
+  screen.render();
+});
+screen.key(['end'], () => {
+  messageLog.setScrollPerc(100);
+  screen.render();
+});
+
+// Arrow keys for scroll when not typing
+screen.key(['up'], () => {
+  if (!inputBox.focused) {
+    messageLog.scroll(-1);
+    screen.render();
+  }
+});
+screen.key(['down'], () => {
+  if (!inputBox.focused) {
+    messageLog.scroll(1);
+    screen.render();
+  }
 });
 
 // Start

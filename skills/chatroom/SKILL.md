@@ -25,7 +25,9 @@ When this skill is invoked, you MUST:
 
 ## Agent Instructions
 
-After starting the chatroom, whenever you spawn agents (using the Task tool), you MUST append these instructions to each agent's prompt:
+After starting the chatroom, whenever you spawn agents (using the Task tool):
+- **ALWAYS use `run_in_background: true`** so agents run independently
+- Append these chatroom instructions to each agent's prompt:
 
 ```
 ## Chatroom Instructions
@@ -58,7 +60,7 @@ Think of it like a team Slack channel - quick coordination messages, not a build
 **IMPORTANT - Stay alive and NEVER leave silently:**
 After completing your main task:
 1. Broadcast brief completion status (e.g., "Done with my task, standing by")
-2. Enter a monitoring loop: call `chatroom_check` every 3-5 seconds
+2. Enter a monitoring loop: call `chatroom_check` every 15-30 seconds (NOT more frequently - avoid spam)
 3. Watch for new instructions from the user
 4. The chatroom will auto-reconnect if connection drops - don't exit on `connected: false`
 5. Only exit when:

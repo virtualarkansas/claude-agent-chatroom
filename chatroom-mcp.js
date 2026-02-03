@@ -140,13 +140,27 @@ async function ensureConnected() {
 /**
  * Disconnect from chatroom
  */
-function disconnect() {
+async function disconnect() {
   if (ws) {
-    ws.close();
+    const socket = ws;
     ws = null;
     connected = false;
+
+    // Close with normal close code (1000) and wait for it
+    return new Promise((resolve) => {
+      socket.once('close', () => {
+        resolve({ success: true, message: 'Disconnected' });
+      });
+
+      // Timeout in case close event doesn't fire
+      setTimeout(() => {
+        resolve({ success: true, message: 'Disconnected (timeout)' });
+      }, 1000);
+
+      socket.close(1000, 'leaving');
+    });
   }
-  return { success: true, message: 'Disconnected' };
+  return { success: true, message: 'Already disconnected' };
 }
 
 /**
@@ -320,7 +334,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return { content: [{ type: 'text', text: JSON.stringify(await connect(args.name, args.type)) }] };
 
     case 'chatroom_leave':
-      return { content: [{ type: 'text', text: JSON.stringify(disconnect()) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(await disconnect()) }] };
 
     case 'chatroom_broadcast':
       return { content: [{ type: 'text', text: JSON.stringify(broadcast(args.message, args.category, args.name)) }] };

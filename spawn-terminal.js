@@ -110,10 +110,7 @@ function openTerminal(command, cwd, options = {}) {
 async function openChatroomUI(chatroomPath) {
   const uiPath = chatroomPath || __dirname;
   const command = 'node ui.js';
-
-  console.log(`Opening chatroom UI in new terminal...`);
   await openTerminal(command, uiPath, { title: 'Agent Chatroom' });
-  console.log('Chatroom UI opened.');
 }
 
 // Run if executed directly

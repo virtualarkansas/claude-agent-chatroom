@@ -110,11 +110,15 @@ async function ensureServerRunning() {
     return;
   }
 
-  // We have the lock - spawn terminal with UI
+  // We have the lock - spawn terminal with UI (non-blocking)
   try {
     const spawnTerminalPath = path.join(PLUGIN_ROOT, 'spawn-terminal.js');
     const uiPath = path.join(PLUGIN_ROOT, 'ui.js');
-    execSync(`node "${spawnTerminalPath}" "${uiPath}"`, { stdio: 'ignore' });
+    const proc = spawn('node', [spawnTerminalPath, uiPath], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    proc.unref();
   } catch (e) {
     // If UI spawn fails, fall back to starting server directly
     const serverPath = path.join(PLUGIN_ROOT, 'server.js');

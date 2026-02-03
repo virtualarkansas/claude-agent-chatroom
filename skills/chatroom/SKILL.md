@@ -11,17 +11,21 @@ This skill starts a real-time chatroom for **coordination between parallel agent
 
 When this skill is invoked, you MUST:
 
-1. **Start the chatroom server/UI** by running this command:
+1. **Find the plugin root** - look for the agent-chatroom plugin in the enabled plugins list or use this path:
+   - macOS/Linux: `~/.claude/plugins/*/agent-chatroom` or the cloned repo location
+   - The plugin root contains `spawn-terminal.js` and `ui.js`
+
+2. **Start the chatroom server/UI** by running:
    ```bash
-   node /Users/balanuser/Projects/claude_plugins/agent-chatroom/spawn-terminal.js /Users/balanuser/Projects/claude_plugins/agent-chatroom/ui.js
+   node <plugin-root>/spawn-terminal.js <plugin-root>/ui.js
    ```
 
-2. **Wait for the server** to be ready (check port 3030):
+3. **Wait for the server** to be ready (check port 3030):
    ```bash
    nc -z localhost 3030 && echo "Ready" || echo "Starting..."
    ```
 
-3. **Confirm to the user** that the chatroom is open.
+4. **Confirm to the user** that the chatroom is open.
 
 ## Agent Instructions
 

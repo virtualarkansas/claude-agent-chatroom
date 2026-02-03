@@ -44,7 +44,7 @@ You have access to a real-time chatroom for coordinating with other agents and r
 - Use \`chatroom_join\` with your agent name and type
 
 **During your work:**
-- Use \`chatroom_broadcast\` to share important findings (category: "found", "claiming", "completed", "blocked")
+- Use \`chatroom_broadcast\` with your name (same as join) to share findings. Example: \`chatroom_broadcast(message: "Found X", name: "your-name")\`
 - Use \`chatroom_check\` periodically to see messages from other agents or guidance from the user
 - If you need input, use \`chatroom_ask\` to ask a question and wait for an answer
 

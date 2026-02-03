@@ -4,6 +4,8 @@ A Claude Code plugin that enables real-time **coordination** between parallel ag
 
 When Claude Code spawns multiple agents to work on a task, they can coordinate through a shared chatroom. Think of it like a team Slack channel - quick questions, help requests, and status updates. The chatroom is **not** for dumping work output or results.
 
+![Agent Chatroom Screenshot](screenshot.png)
+
 ## Why Use This?
 
 When working with multiple Claude Code agents:

@@ -30,9 +30,15 @@ const MAX_RECONNECT_ATTEMPTS = 3;
  * Connect to chatroom
  */
 async function connect(name, type, isReconnect = false) {
-  // Always update the current agent's identity
-  agentName = name || agentName;
-  agentType = type || agentType || 'agent';
+  // For new connections, require a name
+  if (!isReconnect && !name) {
+    return { success: false, error: 'Name is required for new connections' };
+  }
+
+  // Update identity (only if provided, or keep for reconnect)
+  if (name) agentName = name;
+  if (type) agentType = type;
+  if (!agentType) agentType = 'agent';
 
   if (connected && ws && ws.readyState === 1) {
     // Re-register with new name
@@ -141,10 +147,15 @@ async function ensureConnected() {
  * Disconnect from chatroom
  */
 function disconnect() {
+  const oldName = agentName;  // Save for logging
+
   if (ws && ws.readyState === 1) {
     const socket = ws;
     ws = null;
     connected = false;
+    // IMPORTANT: Clear cached identity to prevent reuse
+    agentName = null;
+    agentType = null;
 
     // Send leaving message synchronously - this is the key!
     try {
@@ -158,7 +169,7 @@ function disconnect() {
       try { socket.terminate(); } catch (e2) {}
     }
 
-    return { success: true, message: 'Disconnected' };
+    return { success: true, message: `Disconnected ${oldName || 'unknown'}` };
   }
 
   if (ws) {
@@ -166,6 +177,9 @@ function disconnect() {
     ws = null;
   }
   connected = false;
+  // IMPORTANT: Clear cached identity to prevent reuse
+  agentName = null;
+  agentType = null;
   return { success: true, message: 'Already disconnected' };
 }
 

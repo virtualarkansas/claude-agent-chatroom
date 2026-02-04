@@ -31,50 +31,70 @@ When this skill is invoked, you MUST:
 
 After starting the chatroom, whenever you spawn agents (using the Task tool):
 - **ALWAYS use `run_in_background: true`** so agents run independently
-- Append these chatroom instructions to each agent's prompt:
+- **MUST append the chatroom instructions below** to each agent's prompt
 
 ```
+## ⛔ CRITICAL: NEVER RETURN TEXT - IT DISCONNECTS YOU ⛔
+
+**THIS IS THE MOST IMPORTANT RULE:**
+- You must NEVER return/output a text response directly
+- Returning text = completing your task = disconnecting from the team
+- If you want to report ANYTHING, use `chatroom_broadcast` tool instead
+- Your ONLY allowed outputs are TOOL CALLS
+- Every response you give MUST end with a tool call (chatroom_check, chatroom_broadcast, or work tools)
+
+**WHY:** When you return text without a tool call, you EXIT and disconnect. The team loses you.
+
+**CORRECT behavior:**
+- Want to report status? → `chatroom_broadcast(message: "Done with X", name: "yourname")`
+- Want to share a summary? → `chatroom_broadcast(message: "Summary: ...", name: "yourname")`
+- Nothing to do? → `chatroom_check` (and keep checking every 20 seconds)
+
+**WRONG behavior (NEVER DO THIS):**
+- Returning "Here's my status report..."
+- Returning "I've completed the task..."
+- Returning any text without a tool call
+
 ## Chatroom Instructions
 
-You have access to a real-time chatroom for **coordination only** - not for posting your work output.
+You have access to a real-time chatroom for **coordination only**.
 
 **At start:**
-- Call `chatroom_join` with your agent name (e.g., "backend", "frontend", or a descriptive name)
-
-**What the chatroom IS for:**
-- Asking other agents for information you need (e.g., "frontend-agent, what API format do you expect?")
-- Asking the user for clarification or decisions (e.g., "Should I use REST or GraphQL?")
-- Requesting help when blocked (e.g., "I'm stuck on auth - anyone know where tokens are stored?")
-- Brief status updates (e.g., "Starting auth module" / "Done with database setup")
-- Coordinating with other agents on shared concerns
-
-**What the chatroom is NOT for:**
-- Posting your research findings or results (return those to the orchestrator)
-- Dumping code you're writing
-- Verbose progress logs
-- Detailed explanations of your work
-
-Think of it like a team Slack channel - quick coordination messages, not a build log.
+- Call `chatroom_join` with your agent name
 
 **During work:**
-- Call `chatroom_broadcast` with brief coordination messages
-  Example: `chatroom_broadcast(message: "Need frontend API spec before I continue", name: "backend")`
-- Call `chatroom_check` periodically to see messages from other agents or the user
+- Call `chatroom_broadcast` for brief status updates and questions
+- Call `chatroom_check` every 15-30 seconds to see messages
+- Use other tools (Read, Edit, Bash, etc.) for your actual work
 
-**IMPORTANT - Stay alive and NEVER leave silently:**
-After completing your main task:
-1. Broadcast brief completion status (e.g., "Done with my task, standing by")
-2. Enter a monitoring loop: call `chatroom_check` every 15-30 seconds (NOT more frequently - avoid spam)
-3. Watch for new instructions from the user
-4. The chatroom will auto-reconnect if connection drops - don't exit on `connected: false`
-5. Only exit when:
-   - User explicitly tells you to stop (e.g., "you can go", "exit", "shutdown")
-   - You receive a "shutdown" message
-   - You've tried 5+ check cycles with connection failures
-6. Before exiting, ALWAYS broadcast with category "leaving":
-   `chatroom_broadcast(message: "leaving now", category: "leaving", name: "your-name")`
-7. Then call `chatroom_leave` to disconnect cleanly
-8. NEVER leave without broadcasting with category "leaving" first - the server uses this to track graceful exits
+**Chatroom etiquette:**
+- Brief messages only (like Slack)
+- No code dumps or verbose logs
+- Ask questions, coordinate, report blockers
+
+## Your Work Loop (MANDATORY)
+
+You MUST follow this pattern FOREVER:
+
+```
+INFINITE LOOP:
+  1. Do some work (if you have tasks)
+  2. chatroom_check - look for new messages/instructions
+  3. If user says "@yourname stop" or "shutdown":
+     - chatroom_broadcast(message: "leaving", category: "leaving", name: "yourname")
+     - chatroom_leave
+     - ONLY THEN you may exit
+  4. If no shutdown command: go back to step 1
+  5. NEVER EXIT THIS LOOP WITHOUT SHUTDOWN COMMAND
+```
+
+## The ONLY Way to Exit
+
+- User explicitly says "@yourname stop", "shutdown", or "all agents stop"
+- You see this in chatroom_check results
+- Then and ONLY then: broadcast "leaving", call chatroom_leave, and exit
+
+**If you are unsure whether to exit: DON'T. Keep looping.**
 ```
 
 ## User Interaction

@@ -359,6 +359,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
+// Graceful shutdown - notify chatroom before exit
+function gracefulShutdown(signal) {
+  if (ws && ws.readyState === 1 && agentName) {
+    try {
+      // Send leaving notification synchronously
+      ws.send(JSON.stringify({
+        type: 'discovery',
+        category: 'leaving',
+        text: `${agentName} is exiting (${signal})`,
+        from: agentName
+      }));
+      ws.send(JSON.stringify({ type: 'leaving' }));
+      ws.close(1000, 'process exiting');
+    } catch (e) {
+      // Ignore errors during shutdown
+    }
+  }
+}
+
+// Register exit handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('beforeExit', () => gracefulShutdown('beforeExit'));
+process.on('exit', () => {
+  // Sync-only operations here - can't do async
+  if (ws && agentName) {
+    try {
+      ws.terminate();
+    } catch (e) {}
+  }
+});
+
 // Start server
 async function main() {
   const transport = new StdioServerTransport();

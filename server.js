@@ -7,8 +7,8 @@
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.CHATROOM_PORT || 3030;
-const HEARTBEAT_INTERVAL = 10000; // 10 seconds
-const CLIENT_TIMEOUT = 35000; // 35 seconds (3 missed heartbeats + buffer)
+const HEARTBEAT_INTERVAL = 5000; // 5 seconds (faster detection)
+const CLIENT_TIMEOUT = 15000; // 15 seconds (2 missed heartbeats + buffer)
 
 function createServer(port = PORT) {
   const wss = new WebSocketServer({ port });

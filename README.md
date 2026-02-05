@@ -36,14 +36,14 @@ flowchart TB
     end
 
     subgraph Interface["User Interface"]
-        UI["Terminal UI<br/><i>ui.js - blessed-based TUI</i>"]
+        UI["Web UI<br/><i>web-ui.js - Browser-based</i>"]
         Messages["Message Stream<br/><i>Real-time agent broadcasts</i>"]
     end
 
     Request --> Task
     Task --> Hook
 
-    Hook -->|"1. Check/start server<br/>2. Launch Terminal UI<br/>3. Inject chatroom instructions"| AgentPool
+    Hook -->|"1. Check/start server<br/>2. Launch Web UI in browser<br/>3. Inject chatroom instructions"| AgentPool
 
     A1 & A2 & A3 --> MCP
     MCP <-->|"WebSocket Connection"| WS
@@ -61,22 +61,23 @@ flowchart TB
 
 | Component | File | Description |
 |-----------|------|-------------|
-| **PreToolUse Hook** | `hooks/scripts/task-pretool.js` | Intercepts Task tool calls. Checks if chatroom server is running, starts it if needed, launches the Terminal UI, and injects chatroom instructions into the agent's prompt. |
+| **PreToolUse Hook** | `hooks/scripts/task-pretool.js` | Intercepts Task tool calls. Checks if chatroom server is running, starts it if needed, launches the Web UI in browser, and injects chatroom instructions into the agent's prompt. |
 | **Chatroom MCP Server** | `chatroom-mcp.js` | Model Context Protocol server that exposes `chatroom_join`, `chatroom_broadcast`, `chatroom_check`, `chatroom_ask`, and `chatroom_leave` tools to agents. |
-| **WebSocket Server** | `server.js` | Central message broker running on port 3030. Routes messages between all connected clients (agents and UI). Handles connection lifecycle and heartbeat monitoring. |
-| **Terminal UI** | `ui.js` | Blessed-based terminal user interface. Displays real-time message stream, accepts user input, and sends messages to agents. |
-| **Terminal Spawner** | `spawn-terminal.js` | Cross-platform utility to open a new terminal window. Supports macOS (Terminal, iTerm), Linux (gnome-terminal, konsole, xterm, etc.), and Windows. |
+| **Web UI Server** | `web-ui.js` | Combined HTTP + WebSocket server. Serves the web interface and routes messages between all connected clients (agents and UI). |
+| **Web UI Frontend** | `public/` | Browser-based UI with cyberpunk aesthetic. Displays real-time message stream, agent roster, and accepts user input. |
+| **Terminal UI** | `ui.js` | Legacy blessed-based terminal UI. Use `CHATROOM_UI=terminal` to enable. |
+| **Browser Opener** | `open-browser.js` | Cross-platform utility to open the web UI in the default browser. |
 
 ### Execution Flow
 
 1. **User Request** - User asks Claude Code to perform a multi-agent task
 2. **Task Tool Called** - Claude Code invokes the Task tool to spawn agents
 3. **Hook Intercepts** - PreToolUse hook fires before each Task execution
-4. **Server Initialization** - Hook checks port 3030; starts server and UI if not running
+4. **Server Initialization** - Hook checks port 3030; starts server and opens Web UI in browser if not running
 5. **Prompt Injection** - Hook appends chatroom instructions to agent prompts
 6. **Agent Registration** - Each agent calls `chatroom_join` upon starting
 7. **Real-time Coordination** - Agents broadcast messages and check for updates
-8. **User Interaction** - User observes and sends guidance via Terminal UI
+8. **User Interaction** - User observes and sends guidance via Web UI
 9. **Graceful Shutdown** - Agents detect server close and exit cleanly
 
 ## Why Use This?
@@ -188,36 +189,40 @@ You: Build a user dashboard with backend API and frontend components
 Claude: I'll spawn backend and frontend agents...
         [Task tool called - hook fires - chatroom starts]
 
-→ Terminal UI pops up
+→ Web UI opens in your browser
 → Agents join and coordinate via the chatroom
 → You answer questions and provide guidance
 → Agents return their work output to Claude (not the chatroom)
 ```
 
-### Terminal UI
+### Web UI
 
-When the first agent spawns, a terminal window opens with the chatroom UI:
+When the first agent spawns, your browser opens with the chatroom interface:
 
+- **Header** - Shows connection status and real-time clock
+- **Agent Roster** - Sidebar showing connected agents with color-coded types
+- **Message Log** - Real-time message stream with agent colors and category badges
+- **Input Area** - Type messages to send to agents
+
+The Web UI features a cyberpunk aesthetic with neon colors (cyan for explorers, green for fixers, magenta for testers) and smooth animations.
+
+### Terminal UI (Legacy)
+
+If you prefer the terminal-based interface, set the environment variable:
+
+```bash
+CHATROOM_UI=terminal npm start
 ```
-┌─ Agent Chatroom ──────────────────────────────────────────────┐
-│                                                                │
-│ [system] backend joined                                        │
-│ [system] frontend joined                                       │
-│ [backend] Starting API implementation                          │
-│ [frontend] Hey backend, what response format for /users?       │
-│ [backend] @frontend - JSON with {id, name, email}              │
-│ [backend] User, should I add rate limiting?                    │
-│ [user] Yes, add rate limiting. 100 req/min per user            │
-│ [frontend] Done with my task, standing by                      │
-│                                                                │
-├────────────────────────────────────────────────────────────────┤
-│ > Type a message to send to agents...                         │
-└────────────────────────────────────────────────────────────────┘
+
+Or run directly:
+
+```bash
+npm run ui:terminal
 ```
 
 ### Sending Guidance to Agents
 
-Type in the Terminal UI to send messages. Agents see these when they call `chatroom_check`:
+Type in the Web UI to send messages. Agents see these when they call `chatroom_check`:
 
 ```
 > Use REST, not GraphQL
@@ -283,36 +288,56 @@ Agents use categories to organize their messages:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CHATROOM_PORT` | `3030` | WebSocket server port |
+| `CHATROOM_PORT` | `3030` | WebSocket/HTTP server port |
 | `CHATROOM_URL` | `ws://localhost:3030` | Server URL for MCP clients |
 | `CHATROOM_USER` | `user` | Your display name in chatroom |
+| `CHATROOM_UI` | `web` | UI type: `web` (default) or `terminal` |
 
 ### Manual Server Control
 
 The server starts automatically, but you can also control it manually:
 
 ```bash
-# Start server + UI
+# Start web UI (default)
 npm start
+
+# Start web UI explicitly
+npm run web
+
+# Start terminal UI
+npm run ui:terminal
 
 # Server only (headless, for remote/CI use)
 npm run server
-
-# UI only (connect to running server)
-npm run ui
 ```
 
 ## Troubleshooting
 
-### Terminal UI doesn't open
+### Web UI doesn't open in browser
+
+The chatroom tries to auto-open your default browser. If it fails:
+
+**Workaround:** Open manually in your browser:
+```
+http://localhost:3030
+```
+
+Or start the UI manually:
+```bash
+cd /path/to/agent-chatroom && npm start
+```
+
+### Terminal UI doesn't open (legacy mode)
+
+If using `CHATROOM_UI=terminal`:
 
 **macOS:** Grant Terminal/iTerm automation permissions in System Preferences → Security & Privacy → Privacy → Automation
 
 **Linux:** Ensure you have a supported terminal installed: `gnome-terminal`, `konsole`, `xfce4-terminal`, `xterm`, `alacritty`, or `kitty`
 
-**Workaround:** Start the UI manually in a separate terminal:
+**Workaround:** Start the UI manually:
 ```bash
-cd /path/to/agent-chatroom && npm run ui
+cd /path/to/agent-chatroom && npm run ui:terminal
 ```
 
 ### Agents don't have chatroom tools
@@ -358,15 +383,22 @@ claude-agent-chatroom/
 │   ├── hooks.json            # Hook configuration (PreToolUse for Task)
 │   └── scripts/
 │       └── task-pretool.js   # Hook script (starts server + injects instructions)
+├── public/                   # Web UI static files
+│   ├── index.html            # Main HTML structure
+│   ├── app.js                # Frontend JavaScript
+│   └── styles.css            # Cyberpunk-themed styling
 ├── skills/
 │   └── chatroom/
 │       └── SKILL.md          # /chatroom skill for manual start
 ├── chatroom-mcp.js           # MCP server (provides tools to agents)
-├── server.js                 # WebSocket server (message broker)
-├── ui.js                     # Terminal UI (blessed-based)
-├── spawn-terminal.js         # Cross-platform terminal spawner
-├── start.js                  # Orchestrator (starts server + UI)
+├── web-ui.js                 # HTTP + WebSocket server (default UI)
+├── server.js                 # Standalone WebSocket server
+├── ui.js                     # Terminal UI (legacy, blessed-based)
+├── open-browser.js           # Cross-platform browser opener
+├── spawn-terminal.js         # Cross-platform terminal spawner (legacy)
+├── start.js                  # Orchestrator
 ├── install.js                # MCP installer script
+├── CLAUDE.md                 # Project documentation
 └── package.json
 ```
 
@@ -376,8 +408,9 @@ claude-agent-chatroom/
 |-----------|------|
 | **PreToolUse Hook** | Starts chatroom server/UI and injects instructions when Task is called |
 | **MCP Server** | Provides chatroom_* tools to agents via Model Context Protocol |
-| **WebSocket Server** | Routes messages between agents and UI |
-| **Terminal UI** | Displays messages, accepts user input |
+| **Web UI Server** | Serves web interface and routes messages between agents and UI |
+| **Web UI Frontend** | Browser-based interface with agent roster, message log, and input |
+| **Terminal UI** | Legacy blessed-based terminal interface (use `CHATROOM_UI=terminal`) |
 | **/chatroom Skill** | Manual way to start the chatroom (alternative to auto-start) |
 
 ## Development

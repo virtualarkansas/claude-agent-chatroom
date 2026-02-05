@@ -11,7 +11,7 @@
     {
       "name": "agent-chatroom",
       "source": {
-        "type": "github",
+        "source": "github",
         "repo": "virtualarkansas/claude-agent-chatroom"
       },
       "description": "Real-time chatroom for Claude Code parallel agents. Enables agent-to-agent communication and user guidance.",

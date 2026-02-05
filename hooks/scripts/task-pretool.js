@@ -110,15 +110,29 @@ async function ensureServerRunning() {
     return;
   }
 
-  // We have the lock - spawn terminal with UI (non-blocking)
+  // We have the lock - spawn web UI (non-blocking)
+  // Check for CHATROOM_UI=terminal env var to use old terminal UI
+  const useTerminal = process.env.CHATROOM_UI === 'terminal';
+
   try {
-    const spawnTerminalPath = path.join(PLUGIN_ROOT, 'spawn-terminal.js');
-    const uiPath = path.join(PLUGIN_ROOT, 'ui.js');
-    const proc = spawn('node', [spawnTerminalPath, uiPath], {
-      detached: true,
-      stdio: 'ignore'
-    });
-    proc.unref();
+    if (useTerminal) {
+      // Legacy terminal UI
+      const spawnTerminalPath = path.join(PLUGIN_ROOT, 'spawn-terminal.js');
+      const uiPath = path.join(PLUGIN_ROOT, 'ui.js');
+      const proc = spawn('node', [spawnTerminalPath, uiPath], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      proc.unref();
+    } else {
+      // Web UI (default)
+      const webUiPath = path.join(PLUGIN_ROOT, 'web-ui.js');
+      const proc = spawn('node', [webUiPath], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      proc.unref();
+    }
   } catch (e) {
     // If UI spawn fails, fall back to starting server directly
     const serverPath = path.join(PLUGIN_ROOT, 'server.js');

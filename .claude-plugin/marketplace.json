@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "agent-chatroom",
-      "source": ".",
+      "source": "./plugins/agent-chatroom",
       "description": "Real-time chatroom for Claude Code parallel agents. Enables agent-to-agent communication and user guidance.",
       "version": "1.0.0",
       "author": {
